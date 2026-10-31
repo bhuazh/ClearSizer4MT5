@@ -1,0 +1,104 @@
+ClearSizer MT5 v1.80 — validation record
+2026-10-30
+
+Changes:
+- Right-anchored forecast labels replace the horizontal lines' left descriptions.
+  SL shows price, total lots and total estimated loss. Each TP shows its own price,
+  leg volume and leg cash result. Entry summarizes price, total lots, total SL
+  risk and combined TP profit. All money is in account currency, including costs.
+- CSQuote records the existing per-leg risk/reward calculations in arrays;
+  volume sizing, broker requests and order validation retain their algorithms.
+- Display-only quote copies supply size previews while drawing. Pending SL with
+  no Entry shows unavailable values. Hypothetical missing TP cash is never shown:
+  Entry TP total requires real ready targets, and visible TP0 uses its real price.
+- Failed quotes display --. Submitted forecasts freeze Entry, lines/zones, cash
+  and target count. New Order/Quick unlock the next draft; BE remains available.
+- Labels use measured full/compact/price-only text, avoid the panel and main-chart
+  edges, and separate nearby levels vertically. Full data remains in tooltips.
+  Layout changes refresh placement against this frame's panel bounds and fonts.
+- Hovering a label keeps its candidate price fixed. Clicking it commits the
+  displayed price rather than its offset text coordinate. Fixed labels cannot
+  advance another drawing stage; existing click deduplication remains in force.
+- Tag objects survive body redraws and are removed with cancellation/new drafts.
+
+Retained v1.70 behavior:
+- Footer contains exactly two visible dynamic lines: status and detail. Complete
+  status/detail/context is retained in both tooltips. Errors, results and explicit
+  confirmations retain priority. The old hint object is removed.
+- Default dimensions are 300x354 at 96 DPI/scale1, 32px shorter than v1.61.
+  Each extra TP and own-exposure row still adds 28px. Footer reserves 80px on
+  a single page and adds 20px only when navigation is needed.
+- Red risk and blue reward rectangles span the visible main-chart plot.
+  A shared viewport snapshot probes both edges, retreats past invalid borders
+  or price scales and refines to the nearest valid main-plot pixels.
+  Invalid dimensions/time coordinates remove stale bands for that update.
+- Risk shading is present during SL/Entry/TP previews. Before pending Entry is
+  placed, a local live-quote reference affects only the drawing. Blue reward
+  shading starts with the TP preview and reaches the farthest enabled ready TP.
+- Chart-change events and the existing timer refresh zone bounds. Bands are
+  background, filled and nonselectable, below the price lines' click priority.
+
+Retained v1.61 behavior:
+- ESC now cancels every unsubmitted draft, including completed Ready setups and
+  a pending subtype change waiting for reconfirmation. It clears draft lines,
+  zones, prices and readiness; risk, target count and BE preferences remain.
+  Submitted attempts retain their result and one-submission guard. ESC disarms
+  close/cancel confirmations and never sends broker requests itself.
+- The Ready hint now includes ESC to cancel. README explains HEDGING/NETTING.
+
+Retained v1.60 behavior:
+- NEW ORDER draws SL -> Entry -> TP and selects BUY/SELL from SL versus Entry.
+  It automatically selects BUY LIMIT / BUY STOP against Ask or
+  SELL LIMIT / SELL STOP against Bid. It never falls back to a market order.
+- The first pending SL click is independent of the current quote. Entry and SL
+  may both be above or below the market; SL may be inside the current spread.
+  Pending SL/TP protection distances are checked against the planned Entry.
+- QUICK retains its SL -> TP market workflow and current Bid/Ask SL constraints.
+- Explicit Entry/SL edits reclassify pending orders. A side change clears old
+  targets and requires TP1 to be placed again.
+- The displayed pending subtype stays locked as quotes move. If CONFIRM sees
+  a changed Limit/Stop subtype, it only updates the type and asks for another
+  click; a 600ms guard prevents a queued double-click from reconfirming it.
+- Dynamic drawing status stays below CANCEL SETUP / CONFIRM ORDER.
+  Folded panel stays 300x38.
+- Retained: one page, TP2/TP3/BE in one row, target fields above those buttons,
+  fixed 1R/zero-offset BE without trailing, X removal and reload-safe lock,
+  one actual submission per draft, and contextual scoped cancel/close controls.
+
+PASS: independent static review of per-leg calculations, display-only isolation,
+  frozen forecast consistency, target locks, mouse sequences, layout and native APIs.
+PASS: 28 offline drawing/lifecycle/BE/label groups / 846 assertions.
+PASS: source checks for OnInit reset, the unique fixed BE-only management call,
+  and absence of removed management inputs/state.
+  Cases include actual request types for all four pending workflows; same-side
+  SL/Entry versus market; spread/boundary/minimum-distance cases; text and drag
+  reclassification; all four Limit/Stop transitions on quote crossing; no Timer
+  reclassification; delayed reconfirmation; and prior lifecycle/BE regressions.
+  New ESC cases cover all drawing stages, all four pending and both market Ready
+  setups with TP2/3, type-change waiting, queued sends, retained settings,
+  existing exposure, idle/busy states, destructive confirmations, and success,
+  server rejection, partial execution and Execute-preflight failure results.
+  New viewport cases cover edge fallback/refinement, shared coordinate snapshots,
+  scrolling/resizing, invalid conversion/subwindow/time/dimensions, normalized
+  endpoint ordering, both rectangle anchors, background/fill/selection/priority,
+  preview price/color, farthest TP changes, and cancellation cleanup.
+  Label cases cover BUY/SELL target splits and fees, invalid quotes, real versus
+  hypothetical TP previews, immutable draft intent, submitted forecast freezing,
+  text fallback, clipping/panel collision/nearby stacking, lifecycle cleanup,
+  MOVE -> CLICK exact-price commits, duplicate events and submitted target locks.
+PASS: 9 trade-core offline groups / 202 assertions. Includes per-leg cash for
+  BUY/SELL x 2/3 targets x fee/no-fee, unequal volume splits, legal reference
+  volumes, early/late failures and reuse with no stale disabled-target values.
+PASS: 2,160 single-page layout geometry-model combinations and visual preview QA.
+
+OFFLINE SCOPE: C++ with mechanical MQL syntax substitutions. Broker/account/chart APIs
+are stubs; Render/Rebuild are stubs. Font measurements and price/pixel mappings
+are synthetic. These tests do not verify native text rendering, object hit tests
+or terminal event ordering; the preview is a separate illustrative render.
+NOT PERFORMED FOR THIS VERSION: MetaEditor compilation, native MT5 event/rendering
+or broker integration testing. No EX5 is provided.
+The PNG is a design preview, not a native MT5 screenshot.
+
+Source SHA-256:
+ClearSizer.mq5  d42ae57d723ce6e39f0d82b0965ed6c6f8263ff2bff539aee0c0df6d27396378
+SizerTrade.mqh  a4da89a20c4a6570bd4f01c4f1debf8a9e932758e4756198398f826a683ea63f

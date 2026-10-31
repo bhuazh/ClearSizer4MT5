@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.mq5 text eol=lf
+*.mqh text eol=lf
+*.png binary

@@ -1,0 +1,290 @@
+ClearSizer4MT5 v1.80 — 安装与使用
+日期：2026-10-30
+
+这是重新编写的英文界面 MT5 半自动交易面板，可编辑源码随包提供。
+功能参考用户提供的产品公开介绍，未使用原插件源码或二进制程序。
+
+验证状态
+--------
+当前交付为源码版本，没有 .ex5。
+已进行独立静态审查及交易核心的离线边界测试：9 组、202 个断言通过。
+本版右侧分腿读数、自动四类挂单、固定 BE、重复加载和确认流程的验证范围见 docs/VALIDATION.txt。
+紧凑布局另通过 2,160 种窗口/DPI/缩放/目标数/持仓操作行几何模型组合检查。
+离线测试读取实际 SizerTrade.mqh，经少量机械语法转换后用 C++ 编译运行；
+券商、账户、历史成交和发单接口使用模拟实现。
+这不等于 MetaEditor 编译通过，也不等于真实 MT5/券商接口测试。
+首次请在模拟账户编译、加载并验证下文场景，再决定是否实际使用。
+docs/images/layout-preview.png 是按代码布局绘制的设计预览，数据为示例，不是 MT5 实测截图。
+
+安装
+----
+1. 在 GitHub 仓库选择 Code > Download ZIP 并解压，或使用 Git 克隆仓库。
+2. 在 MT5 中选择 File > Open Data Folder（文件 > 打开数据文件夹）。
+3. 将仓库中的 MQL5/Experts/ClearSizer 文件夹复制到数据目录的 MQL5/Experts/ 下。
+   两个源文件必须同处一个目录：
+   MQL5/Experts/ClearSizer/ClearSizer.mq5
+   MQL5/Experts/ClearSizer/SizerTrade.mqh
+4. 按 F4 打开 MetaEditor，打开 ClearSizer.mq5，按 F7 编译。
+   如果出现错误，请保留完整错误信息及行号，便于修正；未成功编译请勿继续加载。
+5. 返回 MT5，刷新 Navigator > Expert Advisors，将 ClearSizer 拖入图表。
+6. 需要发送订单或启用仓位管理时，打开终端 Algo Trading，并允许此 EA 交易。
+   面板不会依据行情自行开仓，启动时也不会自动画出草稿线。
+无需 DLL、WebRequest、外部库或网络服务。一个图表上只能加载一个 EA。
+
+主界面
+------
+面板只有一个页面，无 TRADE / MANAGE 标签页、TRAIL 功能或 BE 参数设置。
+副标题中的 HEDGING 表示对冲持仓模式：同一品种可有多笔独立仓位，
+也可同时持有买单和卖单；本面板在此模式下可拆分独立订单实现 TP2/TP3。
+NETTING 表示净额模式，同一品种只有一个合并仓位，本面板固定单目标。
+TP2、TP3、BE 三个按钮排在同一行：关闭只显示名称；开启绿色高亮并显示 ON。
+开启 TP2/TP3 后，对应 Take profit 2/3 价格框显示在这一排按钮上方。
+不再需要选择 BUY/SELL，也没有 MARKET/LIMIT/STOP 类型切换。
+主图只需按所选入口依次点线：
+
+NEW ORDER（自动挂单）：红色 SL → 蓝色 Entry → 绿色 TP1。
+1. 点击 NEW ORDER，红色止损预览线出现，跟随鼠标。
+2. 在主图单击固定 SL。此时可放在当前报价的任意一侧，也可在点差范围内；
+   尚未确定入场价时，不使用 SL 与当前报价的关系决定最终买卖方向。
+3. 蓝色入场预览线出现，单击固定挂单 Entry。
+   系统按 SL 与 Entry 的关系决定方向：SL < Entry 为 BUY；SL > Entry 为 SELL。
+   再按 Entry 与最新报价的位置自动分类：
+     BUY：Entry < Ask 为 BUY LIMIT；Entry > Ask 为 BUY STOP。
+     SELL：Entry > Bid 为 SELL LIMIT；Entry < Bid 为 SELL STOP。
+   Entry 不能等于对应 Ask/Bid，或距离报价过近；Entry 与 SL 也不能相等或过近。
+   SL/TP 的最小距离以计划 Entry 为基准检查，挂单 Entry 距报价也须满足券商距离。
+4. 绿色 TP1 线出现，单击固定止盈价。
+   买单 TP 须高于 Entry；卖单 TP 须低于 Entry，并满足最小止盈距离。
+
+QUICK (MARKET)：红色 SL → 绿色 TP1。
+1. 点击 QUICK，单击固定 SL，自动确定买卖方向。
+   SL 低于当前 Bid 为 BUY；高于当前 Ask 为 SELL。
+   SL 等于报价、落在 Bid/Ask 点差内，或不满足券商止损距离时需重新放置。
+2. 系统自动使用当前 Ask（买入）或 Bid（卖出）作为入场价。
+3. 单击固定 TP1，不需要选择或拖动入场线。
+
+两个流程绘制完成后，按钮直接显示 CONFIRM ORDER。
+检查面板上的手数与风险后，点击一次 CONFIRM ORDER 即发送订单；没有 Review 步骤。
+副标题显示已判断出的 BUY LIMIT、BUY STOP、SELL LIMIT、SELL STOP，
+或 QUICK 的 BUY MARKET / SELL MARKET；挂单 Entry 尚未确定时显示 PENDING。
+
+   点面板、指标子窗口或无效价格不会完成当前画线步骤。
+   Entry 已确定后，SL/TP 与计划方向不符或不满足券商距离时会提示重新放置。
+   挂单方向由计划 SL 与 Entry 决定，不随行情跨过 SL 自动反向。
+   QUICK 在发送前会检查当前报价与已锁 SL；行情跨过 SL 时回到画 SL 步骤。
+   挂单发送前按最新报价重新分类。行情跨过 Entry 导致 LIMIT/STOP 类型变化时，
+   本次点击只更新类型并提示，不发单；核对新类型后再点击 CONFIRM ORDER。
+   这次类型更新后的快速连点不会被当作再次确认。
+   NEW ORDER 始终走挂单流程，不会因位置无效或过近退回市价单。
+   图表获得键盘焦点时，按 ESC 可取消所有尚未点击 CONFIRM ORDER 的草稿：
+   包括画线中，以及已经画好、显示 Ready / CONFIRM ORDER 的状态。
+   SL、Entry、TP 和彩色区域会一并清理；风险设置、TP2/TP3 和 BE 开关保留。
+   ESC 不撤销已提交的订单、不平仓，也不清除已提交尝试的结果或防重复提交状态。
+   ESC 还会解除正在等待第二次点击的撤单/平仓确认。
+   折叠会取消未完成绘制。
+   顶部 NEW ORDER / QUICK 可随时重启对应流程；CANCEL SETUP 可清理当前草稿。
+   这些操作只处理草稿，不会发出或修改任何实际订单。
+
+TP2、TP3：独立开关，开启后显示 TP2 ON / TP3 ON 并自动补出对应止盈线，无需额外点选。
+开启 TP3 会同时开启 TP2；关闭 TP2 也会关闭 TP3。
+TP1 尚未固定时可预选开关，对应额外线在固定 TP1 后自动出现。
+净额账户固定单目标，不能开启 TP2/TP3。
+Risk %：输入风险百分比，或用旁边 +/- 每次调整 0.25 个百分点。
+EQUITY / BALANCE：选择净值或余额作为本次风险预算的计算基数。
+Entry：Quick 实时跟随 Ask/Bid，只读；New Order 完成绘制后可编辑或拖动蓝线。
+Stop loss、Take profit 1/2/3：绘制完成后可输入绝对价格，或双击选择对应线再拖动。
+挂单主动编辑或拖动 Entry / SL 后，会重新判断买卖方向及 LIMIT/STOP 类型。
+只要 SL 与 Entry 的大小关系改变，系统就清理旧 TP 并要求重新点选 TP1，
+不会沿用旧方向的止盈直接下反向单；若价格关系无效，则要求重新放置 Entry。
+QUICK 主动把 SL 改到当前报价另一侧时也会重新判断方向并要求重画 TP1。
+只改 TP 不改变方向。
+绘制过程中价格框只读，防止提前确认未完成的草稿。
+价格按品种 tick size 对齐，不仅按小数位对齐。
+如果报价尚未可用，待终端连接、行情到达后点击 NEW ORDER。
+TP2/TP3 关闭时隐藏对应价格行，缩小面板。价格输入仅接受数字和小数点，不使用千分位逗号。
+自动额外目标默认按 TP1 距入场价的一半逐级向盈利方向延伸。
+例如 TP1 距入场为 2R，则 TP2 为 3R、TP3 为 4R；启用后可分别拖动微调。
+
+Lots：本次订单组的总手数。
+Risk：触及初始止损时的估算亏损，单位为账户币种。
+R:R：所有目标按各腿手数加权后的估算收益 / 初始估算亏损。
+Margin：订单组估算所需保证金，单位为账户币种。
+NEW ORDER / QUICK：清理旧草稿并进入对应画线流程，不发单。
+CANCEL SETUP：取消当前草稿，不平仓、不撤实际挂单。
+CONFIRM ORDER：绘制完成且价格/风险检查通过时，一次点击发送。
+点击时按最新行情重新计算手数与风险，不需要先进入 Review。
+若确认时挂单分类刚从 LIMIT 变为 STOP（或反向），先提示新类型，需再确认才发送；
+不能静默沿用旧类型，也不会改发市价单。
+每个草稿只允许一次实际提交，快速连点不会重复发送。
+提交后按钮变为 CHECK RESULT，价格草稿只读；结果保留在状态栏及 Experts 日志。
+若下单部分成功或结果不明确，先查看实际仓位/挂单，不要直接重复整组。
+需要下一笔交易时，再点击顶部 NEW ORDER 或 QUICK 开始新草稿。
+发单前仍会按最新行情再计算和检查。报价、滑点、跳空及费用可使实际亏损不同于估算。
+图上彩色线和区域始终代表“新单草稿”；拖动它们不会修改已经发出的订单。
+红色风险区（SL 到 Entry）和蓝色收益区（Entry 到 TP）横向覆盖整个可见主图绘图区。
+区域在画线预览时也显示，并随图表滚动、缩放、窗口大小及价格线变化更新。
+挂单尚未放置 Entry 时，红区暂以当前报价为视觉参考；真正的挂单 Entry 仍由下一次点选确定。
+放置 TP1 时即可预览蓝区；TP2/TP3 开启后，蓝区延伸至最远的目标。
+彩色区域放在 K 线后方且不可选中，价格线仍可按原方式选择、拖动。
+
+右侧价格线读数
+--------------
+SL、Entry 和各个 TP 的文字固定在可见主图右侧，避开左侧面板。
+Entry：入场价格、总手数、触及 SL 的预计总亏损，以及全部 TP 的预计总收益。
+SL：止损价格、总手数、触及止损的预计亏损（负数）。
+TP1 / TP2 / TP3：各自价格、该目标分腿的手数，以及该分腿的预计收益。
+例如总 0.45 lots 拆成三腿时，每个 TP 显示自身 0.15 lots 的预计收益；
+总手数与总收益显示在 Entry，SL 则仍显示整个订单组的初始风险。
+所有金额采用账户币种，Est. 表示预计值，包含 InpCostPerLot 的费用估计。
+这些读数是新单草稿的 SL/TP 场景估算，不是已持仓的实时浮动盈亏。
+挂单还没有 Entry，或价格/手数/保证金等检查未通过时，未确定的数据显示 --。
+TP 尚未完成绘制时，Entry 上的预计总 TP 收益也显示 --；可见的 TP1 预览会显示自身估算。
+完成一次发送尝试后，保留该草稿确认时的价格和估算，直到开始下一份草稿。
+这时 TP2/TP3 不再改动已经固定的草稿，点击 NEW ORDER / QUICK 后可重新选择目标数量；BE 仍可开关。
+实际成交价、实际手数和实时盈亏应查看 MT5 的 Trade / History。
+价格线靠得很近时，右侧标签会错开排列；标签内的价格始终对应原来的价格线。
+窗口较窄时使用短格式；空间不足时仅显示类型和价格，完整读数可悬停查看。
+ESC、CANCEL SETUP 或开始新草稿时，旧标签随草稿线一并清除。
+
+仓位计算与多目标规则
+--------------------
+风险预算 = 余额或净值 × Risk %。
+利用 OrderCalcProfit 按券商合法参考手数计算初始止损亏损，再向下取整到手数步长。
+预算不足以满足最小手数时拒绝下单，不会上调到最小手数。
+每次会检查手数上限、方向总量上限、SL/TP 位置、止损最小距离和可用保证金。
+所选 Risk % 是这一次订单组的预算，不是所有已有交易的账户总风险上限。
+InpCostPerLot 可加入预计每手往返费用（账户币种），默认 0。
+不自动估计佣金、隔夜利息、滑点和跳空损失。
+
+对冲账户（HEDGING）：多目标拆成 2 或 3 个独立订单，相同 SL、不同 TP。
+手数按步长尽量平均分，余数分到最后一腿；每腿均须满足券商最小/最大手数。
+不能满足每腿限制就拒绝，不会擅自增加风险或减少目标数量。
+已设 SL/TP 随单发送给券商；各腿由券商按各自 TP 处理。
+中途一腿被拒绝、部分成交或市价请求仅被受理时停止发送后续腿，保留完整状态。
+不会自动重发整组，也不会自动撤销已经被接受的订单。
+
+净额账户（NETTING）：仅单目标；新开单要求该品种没有任何已有仓位或挂单。
+这样可避免本工具主动将新交易并入已有净仓。
+如果净仓后续混入其他 Magic ID 或手工成交，或历史无法验证，面板拒绝管理/关闭该仓。
+券商已设的 SL/TP 不会因拒绝本地管理而移除。必须与其他策略隔离使用。
+挂单使用券商支持的 GTC，若不支持则使用 DAY；后者会在券商交易日结束时失效。
+仅支持指定到期时间的品种会拒绝挂单，而不是猜测到期时间。
+
+BE 保本
+-------
+点击 BE，变为绿色 BE ON；再次点击恢复为灰色 BE。
+BE 采用固定规则，没有参数设置：盈利达到最初风险距离 1R 后，将 SL 移到开仓价。
+1R 是实际开仓价到初始 SL 的价格距离，后来移动 SL 不改变原始 R。
+例如买入价 100、初始 SL 90，1R=10；当前 Bid 到 110 时，目标 SL 为 100。
+之后价格继续上涨，BE 不跟踪价格，也不会把 SL 继续推高；卖单方向相反。
+目标为价格保本，不包含手续费、隔夜费或滑点，实际调整还须满足券商止损/冻结距离。
+可以在下单前或持仓后开启；如果已达到 1R，下一个有效行情更新就会尝试调整。
+作用于当前品种 + InpMagic 的全部可验证自有仓位；挂单成交后才管理。
+BE 只收紧 SL，保留 TP；关闭开关不会恢复或撤销已移动的 SL。
+初始 R 可从持久化记录、入场历史或订单注释恢复；缺失时跳过并写日志。
+
+撤挂单与平仓
+------------
+有本插件的仓位或挂单时，主界面自动多显示一排 CANCEL PENDING / CLOSE POSITIONS。
+这两个操作只针对当前品种 + InpMagic；鼠标悬停可查看相应订单数量。
+CANCEL PENDING、CLOSE POSITIONS 均需 8 秒内再次点击确认。
+关闭仓位不会同时撤销挂单；需要时请分别操作两个按钮。
+BE 必须保持 MT5、EA、行情和交易权限在线；SL/TP/挂单由券商处理。
+切换周期、重载 EA 或重启后，草稿、缩放及 BE 开关重新初始化，BE 默认关闭。
+已发出的订单和券商端止损不受草稿重置影响，初始 R 记录仍可恢复。
+
+显示调整
+--------
+默认紧凑尺寸（96 DPI、1.0 缩放）：300×354；开启 TP2 为 300×382；
+TP2+TP3 都开启为 300×410。有自有仓位或挂单时，撤/平操作行再增加 28 像素。
+折叠后为 300×38。
+相较 v1.00 的 380×534，默认宽度和高度均缩小，并采用 9 号正文字体。
+顶部 - / +：面板尺寸缩放，范围 0.6–2.5；不会只放大文字。
+FOLD / OPEN：折叠和展开。
+右上角红色 X：将 ClearSizer EA 从图表移除，折叠状态也可以关闭。
+X 不平仓、不撤销实际挂单；券商已有 SL/TP 保留，EA 本地 BE 停止。
+InpUIScale：初始缩放，默认 1.0。
+InpDpiOverride：默认 0 使用 TERMINAL_SCREEN_DPI；Wine/远程桌面报告不准时可试 96 或 144。
+InpFont：默认 Arial，可替换为本机已安装字体。
+InpPanelX / InpPanelY：面板在图表左上角附近的偏移。
+窗口宽度不足时自动缩小整体布局；高度不足时通过 PREV / NEXT 按完整行分页。
+画线步骤等动态提示位于 CANCEL SETUP / CONFIRM ORDER 主按钮下方；
+信息区只保留两行：主要状态和操作详情，底部留白已收紧。
+绘制步骤、错误、订单结果、确认提示仍动态显示；鼠标悬停任一行可查看完整上下文。
+单页不再在主按钮上方保留提示或空白行，多页时仅分页导航位于主按钮上方。
+小于最小可读尺寸时显示放大图表的提示，不显示被裁切的交易按钮。
+提示较长时省略显示；鼠标悬停状态文字可看全文，交易返回详情同时写入 Experts 日志。
+同一终端、账户、品种和 Magic ID 仅允许一个面板拥有管理权。
+用相同品种开启第二个独立面板时应选择不同的 InpMagic。
+实例锁在卸载开始时优先释放，正常关闭、替换为其他 EA、换周期后均可重新加载。
+v1.30 修复了第二次加载失败：旧版把“临时锁变量已存在”误判为初始化错误；
+新版复用已释放的锁变量，并继续用原子占用避免两个面板同时管理同一范围。
+同一品种和 Magic 若已由另一活跃面板占用，仍会拒绝加载，请移除那个面板或改用其他 ID。
+重新初始化还会清除旧确认状态与草稿，并将 BE 恢复为关闭状态。
+
+首次模拟盘验收建议
+------------------
+1. 在实际使用的 Windows/Wine、显示缩放、图表大小下确认无重叠或裁切。
+2. 验证 NEW ORDER 画 SL→Entry→TP，QUICK 画 SL→TP。
+   挂单分别测试 BUY LIMIT、BUY STOP、SELL LIMIT、SELL STOP，核对副标题和实际订单类型：
+   BUY 按 Entry 相对 Ask 分类，SELL 按 Entry 相对 Bid 分类；方向按 SL 相对 Entry 判断。
+   特别测试挂单 SL 在当前报价上方的 BUY STOP，以及在当前报价下方的 SELL STOP，
+   确认不会因 SL 位于当前报价的另一侧而拒绝；首击 SL 本身也不应因位于点差内被拒绝。
+   挂单 SL/TP 最小距离按 Entry 检查；Entry 等于或过近 Ask/Bid 时应拒绝。
+   QUICK 的 SL 位于点差内时应拒绝，行情越过已锁 SL 时应重画，不能静默反向。
+   主动编辑/拖动挂单 Entry 或 SL 应重新分类；方向改变时须重画 TP1。
+   行情跨过 Entry 导致类型改变后，第一次 CONFIRM 应只显示新类型，之后明确再确认才发送。
+   无效区域不推进；画线中和 Ready 尚未 Confirm 时按 ESC，线条和区域均应消失，
+   随后点击旧 Confirm 不应发单；已提交后按 ESC 不应撤单或平仓。
+   任何无效挂单都不能退回市价。
+   打开 TP2/TP3 后核对自动线的顺序、价格；关闭后应隐藏对应线和价格行。
+   再测试买/卖各一个 QUICK 市价单，核对总手数、SL、TP 和日志。
+3. 选择预算小于最小手数的设置，确认面板拒绝下单。
+4. 对冲账户测试 2/3 TP，核对每腿手数总和及各自 SL/TP。
+5. 测试 BE：盈利到 1R 后 SL 移至开仓价，继续上涨不跟踪；TP 不变，重载后关闭。
+6. 测试撤挂单、平仓只影响当前品种 + Magic；其他订单应保留。
+7. 净额账户用已有仓位或挂单验证新单被拒绝。
+8. 断网、关闭 Algo Trading 或券商拒单时，确认日志准确，不盲目重复确认。
+9. 点击 X 移除后重新加载；再用其他 EA 替换本面板，然后移除并重新加载。
+   验证都能正常显示。切换周期/输入参数后应无旧确认状态，BE 应关闭。
+10. 正常完成画线后一次 CONFIRM ORDER 应只提交一次，连点不能重复开单；
+    类型更新提示后的快速连点也不能意外发单，检查新类型后应明确重新确认。
+11. 核对 TP2/TP3/BE 同排，关闭没有 OFF，开启绿色 ON；额外 TP 价格在按钮上方。
+    仓位/挂单数量从无变有再变无时，撤/平操作行应正常出现并清理，无残留控件。
+12. 检查主按钮下方只有两行动态信息，底部空白缩小；分页导航可在上方，不应残留旧提示。
+13. 画 SL、Entry、TP 时核对红/蓝区域覆盖可见主图整个横向宽度。
+    滚动历史、缩放、改变窗口大小后应继续覆盖绘图区；价格线应仍可选择/拖动。
+    取消草稿或 ESC 后，红/蓝区域与草稿线应一并消失。
+14. 核对所有线的文字出现在右侧，显示价格、总/分腿手数及账户币种预计盈亏。
+    开启三个 TP，核对各 TP 手数和收益分别对应各腿，总手数/总收益与 Entry 汇总一致。
+    改 SL、风险比例、Entry、TP 或目标数量后应重算；绘制完成前不应显示虚构的总 TP 收益。
+    测试价格线接近、标签点击、窄窗口、滚动缩放、取消清理及提交后草稿读数冻结。
+
+参考资料
+--------
+用户提供的原产品公开介绍：
+https://www.mql5.com/en/market/product/159442
+原产品更新记录：
+https://www.mql5.com/en/market/product/159442/updates
+Hedging / Netting 持仓模式：
+https://www.metatrader5.com/en/terminal/help/trading/general_concept
+原生对象和字体/屏幕规格：
+https://www.mql5.com/en/docs/constants/objectconstants/enum_object_property
+https://www.mql5.com/en/book/common/environment/env_screen
+https://www.mql5.com/en/docs/objects/textsetfont
+https://www.mql5.com/en/docs/chart_operations/chartxytotimeprice
+https://www.mql5.com/en/docs/constants/chartconstants/enum_chartevents
+https://www.mql5.com/en/docs/chart_operations/charttimepricetoxy
+https://www.mql5.com/en/docs/constants/objectconstants/enum_anchorpoint
+交易估算与请求结果：
+https://www.mql5.com/en/docs/trading/ordercalcprofit
+https://www.mql5.com/en/docs/trading/ordercalcmargin
+https://www.mql5.com/en/docs/trading/ordercheck
+https://www.mql5.com/en/docs/trading/ordersend
+仓位历史与初始止损：
+https://www.mql5.com/en/docs/trading/historyselectbyposition
+https://www.mql5.com/en/docs/constants/tradingconstants/dealproperties
+临时变量与移除生命周期：
+https://www.mql5.com/en/book/common/globals/globals_condition
+https://www.mql5.com/en/docs/common/expertremove
+https://www.mql5.com/en/docs/runtime/event_fire

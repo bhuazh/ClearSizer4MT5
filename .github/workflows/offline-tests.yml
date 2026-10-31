@@ -1,0 +1,30 @@
+name: Offline source checks
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install C++ compiler
+        run: |
+          if ! command -v clang++ >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes clang
+          fi
+      - name: Core branch tests
+        run: python tests/test_trade_offline.py
+      - name: Drawing and state branch tests
+        run: python tests/test_drawing_offline.py
+      - name: Layout model checks
+        run: python tests/check_compact_layout.py
+      - name: Confirm tracked source files are unchanged
+        run: git diff --exit-code

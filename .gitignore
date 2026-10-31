@@ -1,0 +1,21 @@
+# Compiled MQL output and terminal/runtime data
+*.ex5
+*.ex4
+*.log
+*.tst
+*.opt
+*.set
+*.ini
+# Python/generated test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.offline.hpp
+tests/test_trade_offline
+tests/test_drawing_offline
+build/
+dist/
+# Local editor and operating system files
+.DS_Store
+.idea/
+.vscode/
