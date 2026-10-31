@@ -1,139 +1,71 @@
 # ClearSizer4MT5
 
-[中文说明](README.md)
+[中文](README.md)
 
-**ClearSizer v1.80** is a manual trading panel for MetaTrader 5. Place SL, Entry and TP levels on the chart, inspect the risk-based position size, then click **CONFIRM ORDER** to submit.
+ClearSizer v1.80 is an MT5 panel for planning trades on the chart and sizing them from a chosen risk percentage.
 
-**This repository provides MQL5 source, without a compiled `.ex5`. MetaEditor compilation and native MT5/broker testing have not been completed.** The offline checks and their limits are listed below. Compile and validate on a demo account before use.
+![ClearSizer panel and chart labels](docs/images/layout-preview.png)
 
-![ClearSizer design preview: compact panel, right-side per-leg forecasts and full-width risk/reward zones](docs/images/layout-preview.png)
+*Illustration with sample prices and amounts, not a native MT5 screenshot.*
 
-*Design preview with illustrative prices and amounts. This is not a native MT5 screenshot or a trading record.*
+## Install
 
-## Features
+This repository contains source files, without a compiled `.ex5`.
 
-- **NEW ORDER:** draw SL → Entry → TP1; automatically classify BUY/SELL and Limit/Stop for four ordinary pending order types.
-- **QUICK:** draw SL → TP1; use the current Ask/Bid for a market entry.
-- Risk sizing from balance or equity, rounded down to the broker's volume step, with volume, distance, directional exposure and margin checks.
-- TP2/TP3 as separate order legs, fixed **1R break-even**, and scoped cancel/close actions.
-- Right-aligned price labels with total/per-leg volumes and estimated SL/TP outcomes; risk/reward zones across the visible chart.
-- A compact **300 × 354** default layout with DPI scaling, folding and complete-row pagination.
+1. Download or clone the repository.
+2. In MT5, choose **File → Open Data Folder**. Copy `MQL5/Experts/ClearSizer` into the data folder's `MQL5/Experts/` directory. Keep `ClearSizer.mq5` and `SizerTrade.mqh` together.
+3. Press **F4**, open `ClearSizer.mq5` in MetaEditor, then press **F7** to compile. Resolve any errors before attaching it.
+4. Refresh **Navigator → Expert Advisors** and attach ClearSizer to a chart.
+5. Enable **Algo Trading** and the EA's trading permission when placing orders or using break-even. Start on a demo account.
 
-It does not generate signals or open trades from market movement alone. No DLLs, WebRequest, external libraries or additional network services are required; normal MT5 market and trading connectivity is still needed.
+No DLLs or external libraries are required. The panel starts empty and does not generate trading signals.
 
-## Install and compile
+## Place an order
 
-Keep both files together:
+**NEW ORDER** starts a pending setup: click the main chart to fix **SL → Entry → TP1**. The first SL can be on either side of the current quote. Direction comes from SL relative to the planned Entry; Entry relative to the current Ask/Bid determines the pending type:
 
-```text
-MQL5/Experts/ClearSizer/
-├── ClearSizer.mq5
-└── SizerTrade.mqh
-```
-
-1. Download or clone this repository.
-2. In MT5, select **File → Open Data Folder**. Copy the repository's `MQL5/Experts/ClearSizer` directory into that data folder's `MQL5/Experts/` directory.
-3. Press **F4** to open MetaEditor, open `ClearSizer.mq5`, and press **F7** to compile. Resolve compilation errors before attaching the EA. Include full errors and line numbers when reporting a problem.
-4. Refresh **Navigator → Expert Advisors** in MT5 and attach **ClearSizer** to a chart.
-5. Enable terminal **Algo Trading** and the EA's trading permission when submitting orders or using break-even.
-
-Startup does not create a draft. Choose NEW ORDER or QUICK first. MT5 permits one EA per chart.
-
-## Plan an order
-
-### NEW ORDER: automatic pending classification
-
-Click the main chart to place **red SL → blue Entry → green TP1**.
-
-The first SL click can be on either side of the current quote, including inside the spread. Pending direction is determined by **SL relative to the planned Entry**:
-
-| Direction | Entry relative to the current quote | Type |
+| Direction | Entry position | Order |
 | --- | --- | --- |
-| SL < Entry: BUY | Entry < Ask | BUY LIMIT |
-| SL < Entry: BUY | Entry > Ask | BUY STOP |
-| SL > Entry: SELL | Entry > Bid | SELL LIMIT |
-| SL > Entry: SELL | Entry < Bid | SELL STOP |
+| SL < Entry: BUY | Below Ask | BUY LIMIT |
+| SL < Entry: BUY | Above Ask | BUY STOP |
+| SL > Entry: SELL | Above Bid | SELL LIMIT |
+| SL > Entry: SELL | Below Bid | SELL STOP |
 
-Entry must be sufficiently far from the applicable Ask/Bid and from SL. Pending SL/TP distances are checked relative to the planned Entry. BUY targets must be above Entry; SELL targets must be below it. Prices are aligned to the symbol's tick size.
+Entry must be far enough from the quote and SL to meet the broker's distance rules. Pending SL/TP distances use the planned Entry. Invalid pending setups are rejected, never converted to market orders.
 
-The subtitle shows PENDING until Entry is established, then the classified order type. An invalid pending setup never falls back to a market order.
+**QUICK** needs **SL → TP1**. SL below Bid selects BUY at Ask; SL above Ask selects SELL at Bid. A stop inside the spread or too close is rejected. Entry follows the quote and stays read-only.
 
-### QUICK: market entry
+Once the lines are placed, check Lots, Risk, R:R and Margin, then click **CONFIRM ORDER**. If the market has crossed a pending Entry and changed its Limit/Stop type, that click only updates the type. Check the new type and confirm again.
 
-Place **SL → TP1**. SL below Bid selects BUY at Ask; SL above Ask selects SELL at Bid. SL inside the spread, equal to the quote, or too close is rejected. Entry follows the quote and is read-only. If the market crosses the locked SL before submission, the SL step must be repeated.
+Edit prices or drag lines after drawing. Changing pending Entry/SL recalculates the order type; a direction change requires TP1 to be placed again. Draft edits leave existing trades unchanged.
 
-### Confirm, edit and cancel
+With the chart focused, **ESC** clears any unsubmitted draft, including Ready. It also disarms a pending cancel/close confirmation. It does not cancel submitted orders or close positions. Finish editing a field and activate the chart if another control has keyboard focus. **CANCEL SETUP** also clears the draft; NEW ORDER or QUICK starts another.
 
-- Once drawing is complete, inspect Lots, Risk, R:R and Margin. **One CONFIRM ORDER click normally submits the setup.**
-- If the market crosses a pending Entry and changes Limit/Stop classification at confirmation time, that click only updates the type. Inspect it and explicitly confirm again. A queued double-click does not bypass this step.
-- Each draft permits one submission attempt. It then shows **CHECK RESULT** and freezes draft prices. Check Trade/History and the Experts log before creating another setup after a partial or ambiguous result.
-- Finished draft prices can be edited or their lines selected and dragged. Editing pending Entry/SL reclassifies the setup; a direction change clears old targets and requires TP1 to be placed again.
-- With the chart focused, **ESC** cancels any unsubmitted draft, including Ready, and removes its lines, labels and zones. Risk and TP2/TP3/BE switches remain. ESC also disarms cancel/close confirmation; it does not cancel submitted orders, close positions or reset submission-result protection.
-- **CANCEL SETUP** clears the draft. NEW ORDER/QUICK starts another draft. These actions do not modify actual trades. Folding cancels unfinished drawing.
+## Targets and break-even
 
-Panel clicks, indicator subwindows and invalid prices do not complete a drawing step. ESC is chart-local: finish text editing and activate the relevant chart window if another control or window has keyboard focus.
+TP2, TP3 and BE share one row. Green controls marked ON are enabled. TP3 also enables TP2; turning TP2 off disables TP3. Before submission, the extra target prices appear above the buttons and can be edited.
 
-## Risk, targets and account modes
+On a hedging account, multiple targets become separate orders with the same SL and different TPs. Total volume is divided into broker-valid steps, with any remainder in the last leg. If a leg cannot meet minimum/maximum volume, the setup is rejected rather than enlarged.
 
-`Risk budget = balance or equity × Risk %`. The adjacent −/+ changes risk by **0.25 percentage points**; EQUITY/BALANCE selects the basis. Use a decimal point and no thousands separators.
+**BE** tries to move SL to entry after a favorable **1R** move. R is the original entry-to-SL price distance: for a BUY at 100 with SL 90, Bid reaching 110 makes 100 the target SL. It only tightens the stop, keeps TP and does not trail afterward. Fees, swaps and slippage are not covered. Keep MT5 and the EA running with quotes and trading permission available.
 
-The engine uses `OrderCalcProfit` with a legal broker reference volume, then rounds down to the volume step. A result below minimum volume is rejected rather than rounded up. Risk % covers the current order group, not the total risk of all open trades.
+## Reading the chart
 
-TP2, TP3 and BE share one row. Disabled controls show their names; enabled controls turn green and show ON. Additional TP price fields appear above them. TP3 enables TP2; disabling TP2 also disables TP3. Extra targets extend by half the Entry-to-TP1 distance per level: a 2R TP1 produces default 3R/4R targets, which can be adjusted afterward.
+Right-side labels show draft forecasts in account currency. Entry summarizes total volume, estimated SL loss and combined TP reward. SL uses total volume; each TP shows its own leg's volume and reward. These are not live floating P/L. Hover shortened labels for full details.
 
-- **HEDGING:** multiple targets use separate orders with the same SL and different TPs. Volume is divided into legal steps, with the remainder assigned to the last leg. Every leg must satisfy minimum/maximum volume; the engine rejects an invalid split instead of increasing risk or removing a target.
-- **NETTING:** one target only. The symbol must have no existing position or pending order before opening a new setup. A net position containing another Magic ID/manual deal, or with unverifiable history, is excluded from local management and closing.
+Red and blue zones cover the chart between SL, Entry and the furthest TP. The 300 × 354 default panel at 96 DPI supports zoom, folding and pagination. The red **X** removes the EA without closing trades; local BE then stops. Reloading or changing timeframe resets the draft and switches BE off.
 
-A rejected or partially filled leg, or a market request accepted without confirmed execution, stops later legs. Already accepted orders remain; the entire group is not retried automatically.
+## Account and execution details
 
-## Break-even and owned trades
+Risk % applies to the current order group, not the whole account. Volume rounds down; a result below the broker minimum is rejected. `InpCostPerLot` adds an estimated round-trip cost per lot, default 0. Actual costs, fills and gaps can produce different results.
 
-**BE** has one fixed rule: after a **+1R** favorable move, try to move SL to the actual entry price. Here 1R is the original entry-to-SL price distance. For a BUY at 100 with initial SL 90, Bid reaching 110 makes 100 the target SL; SELL is symmetric.
+Netting accounts support one target and require the symbol to have no existing position or pending order. Mixed or unverifiable net positions are excluded from management. Cancel, close and BE use the current symbol plus `InpMagic`; use distinct IDs for independent panels. **CANCEL PENDING** and **CLOSE POSITIONS** each need a second click within eight seconds.
 
-BE only tightens SL, preserves TP and does not keep trailing afterward. Turning it off does not undo an SL move. This is price break-even, excluding fees, swaps and slippage; broker stop/freeze distances still apply.
+Each draft permits one submission attempt. A partial fill, rejection or unconfirmed market execution stops later legs, leaving accepted orders in place. After **CHECK RESULT**, inspect Trade/History and the Experts log before starting another setup.
 
-BE applies to verifiable positions for the current symbol and `InpMagic`, including pending orders after they fill. Keep MT5, the EA, quotes and trading permission online. Missing original-risk information causes management to be skipped and logged.
+## Tests and documentation
 
-When owned exposure exists, **CANCEL PENDING / CLOSE POSITIONS** appears on the main page. Hover for counts. Both require a second click within **8 seconds**, affect only the current symbol + `InpMagic`, and are separate actions: closing positions does not cancel pending orders.
-
-## Forecast labels and zones
-
-The right-side labels describe **draft scenarios, not live floating P/L**:
-
-| Label | Forecast scope |
-| --- | --- |
-| Entry | Price, total volume, total estimated SL loss and combined TP-leg reward |
-| SL | Price, total volume and estimated total loss |
-| TP1/TP2/TP3 | Target price, that leg's volume and that leg's estimated reward |
-
-For 0.45 lots split into three equal legs, each TP shows its own 0.15 lots. Amounts use account currency and include the configured `InpCostPerLot` estimate. Unavailable or invalid values show `--`; total TP reward remains unavailable before target drawing is complete.
-
-Nearby labels are staggered; narrow windows use shorter text with full tooltips. After a submission attempt, forecasts remain a snapshot of that draft. Read actual fills and live P/L in MT5 Trade/History.
-
-Red SL-to-Entry and blue Entry-to-farthest-TP zones span the visible main chart and update with chart and price changes. Before pending Entry is placed, the red zone temporarily uses the current quote as a visual reference. Draft objects are drawn behind candles; editing a draft never modifies an already submitted order.
-
-## Display, lifecycle and cost settings
-
-At 96 DPI and 1.0 scale, the default panel is **300 × 354**. Each extra TP row and the owned-trade action row adds 28 pixels. Folded size is 300 × 38.
-
-- −/+ and `InpUIScale`: overall scale, 0.6–2.5. `InpDpiOverride=0` uses terminal DPI; a manual override can help with incorrect Wine/remote-desktop reports.
-- `InpFont` defaults to installed Arial; `InpPanelX/Y` sets the top-left offset. Limited height uses PREV/NEXT pagination.
-- The two status lines below the main buttons retain full status/detail/context in their tooltips. Native fonts, DPI and keyboard focus require terminal validation.
-- **X removes the EA**, without closing positions or canceling pending orders. Broker SL/TP remains; local BE stops.
-- One panel owns each terminal/account/symbol/Magic scope. Use distinct `InpMagic` values for independent panels.
-- Timeframe/parameter changes, reload and restart reset the draft, scale, confirmations and BE switch; BE defaults to off. Submitted orders and broker stops remain; original-R records can be recovered.
-
-`InpCostPerLot` is an estimated round-trip fee per lot in account currency, default 0. The engine does not automatically estimate all commissions, swaps, slippage or gap losses. Execution prices and actual costs can differ from the forecast. Broker-supported pending expiration uses GTC, otherwise DAY; symbols requiring a specified expiry time are rejected.
-
-## Validation and tests
-
-| Offline check | Passed scope |
-| --- | --- |
-| Drawing and interaction flow | 28 groups, 846 assertions |
-| Trade-engine boundaries | 9 groups, 202 assertions |
-| Layout geometry model | 2,160 window/DPI/scale/target/exposure combinations |
-
-From the repository root:
+From the repository root, with Python 3 and a C++17-capable `clang++`:
 
 ```sh
 python3 tests/test_trade_offline.py
@@ -141,22 +73,6 @@ python3 tests/test_drawing_offline.py
 python3 tests/check_compact_layout.py
 ```
 
-The first two require Python 3 and a C++17-capable `clang++`. They read actual MQL source, apply limited mechanical syntax conversions and execute C++ with stubbed broker/account/chart/trading APIs. The geometry check does not render native MT5 controls.
+These offline checks use converted MQL logic and simulated platform APIs; they do not establish MetaEditor compilation or native MT5/broker behavior, which remain unverified.
 
-**These are not MetaEditor compilation or MT5/broker integration tests.** Actual execution, asynchronous broker behavior, native rendering and focus remain unverified. No compiled `.ex5`, return claim or performance guarantee is provided.
-
-Demo acceptance should cover all four pending types and both QUICK directions; invalid prices, volume and margin; edit-driven reclassification and type-change reconfirmation; ESC during drawing/Ready and after submission; per-leg volumes/rewards; 1R BE; cancel/close scope; X and reload; right-side labels, narrow windows, two-line messages and full-width zones.
-
-## Repository layout
-
-```text
-MQL5/Experts/ClearSizer/   # MQL5 panel and trade engine
-docs/images/             # Design preview
-tests/                   # Offline flow, engine and geometry checks
-README.md                # Chinese guide
-README.en.md             # English guide
-```
-
-## More documentation
-
-[Full Chinese user guide](docs/USER_GUIDE.zh-CN.txt) · [Validation record](docs/VALIDATION.txt) · [Test harness notes](tests/README.md) · [Changelog](CHANGELOG.md)
+[Full user guide (Chinese)](docs/USER_GUIDE.zh-CN.txt) · [Test notes](tests/README.md) · [Validation record](docs/VALIDATION.txt) · [Changelog](CHANGELOG.md)
